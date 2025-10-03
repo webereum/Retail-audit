@@ -1,11 +1,14 @@
 import express from 'express';
 import cors from 'cors';
 import dotenv from 'dotenv';
+import connectDB from './config/database.js';
 import authRoutes from './routes/auth.js';
 import templateRoutes from './routes/templates.js';
 import auditRoutes from './routes/audits.js';
 
 dotenv.config({ path: '../.env' });
+
+connectDB();
 
 const app = express();
 const PORT = process.env.PORT || 3001;

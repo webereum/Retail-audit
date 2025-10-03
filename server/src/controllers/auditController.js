@@ -1,152 +1,118 @@
-import { supabase } from '../config/supabase.js';
+import Audit from '../models/Audit.js';
+import Template from '../models/Template.js';
 
 export const getAllAudits = async (req, res) => {
   try {
     const { status, assigned_to } = req.query;
-    const userId = req.user?.user_id || req.user?.id;
+    const filter = {};
 
-    let query = supabase
-      .from('audits')
-      .select('*, templates(name, category), users(name, email)')
-      .eq('assigned_to', assigned_to || userId);
+    if (status) filter.status = status;
+    if (assigned_to) filter.assigned_to = assigned_to;
 
-    if (status) {
-      query = query.eq('status', status);
-    }
+    const audits = await Audit.find(filter)
+      .populate('template_id', 'name category')
+      .sort({ createdAt: -1 });
 
-    const { data, error } = await query.order('created_at', { ascending: false });
-
-    if (error) {
-      return res.status(400).json({ error: error.message });
-    }
-
-    res.json({ audits: data });
+    res.json({ audits });
   } catch (error) {
-    res.status(500).json({ error: 'Failed to fetch audits', details: error.message });
+    res.status(500).json({ error: 'Failed to fetch audits', message: error.message });
   }
 };
 
 export const getAuditById = async (req, res) => {
   try {
-    const { id } = req.params;
+    const audit = await Audit.findById(req.params.id).populate('template_id');
 
-    const { data, error } = await supabase
-      .from('audits')
-      .select('*, templates(*), users(name, email)')
-      .eq('audit_id', id)
-      .maybeSingle();
-
-    if (error) {
-      return res.status(400).json({ error: error.message });
-    }
-
-    if (!data) {
+    if (!audit) {
       return res.status(404).json({ error: 'Audit not found' });
     }
 
-    res.json({ audit: data });
+    res.json({ audit });
   } catch (error) {
-    res.status(500).json({ error: 'Failed to fetch audit', details: error.message });
+    res.status(500).json({ error: 'Failed to fetch audit', message: error.message });
   }
 };
 
 export const createAudit = async (req, res) => {
   try {
     const { template_id, assigned_to, location } = req.body;
-    const userId = req.user?.user_id || req.user?.id;
 
-    const { data, error } = await supabase
-      .from('audits')
-      .insert([{
-        template_id,
-        assigned_to: assigned_to || userId,
-        location: location || {},
-        status: 'Pending'
-      }])
-      .select()
-      .single();
-
-    if (error) {
-      return res.status(400).json({ error: error.message });
+    const template = await Template.findById(template_id);
+    if (!template) {
+      return res.status(404).json({ error: 'Template not found' });
     }
 
-    res.status(201).json({ audit: data });
+    const audit = new Audit({
+      template_id,
+      template_name: template.name,
+      assigned_to: assigned_to || 'field_user',
+      location: location || {},
+      status: 'Pending',
+      responses: new Map()
+    });
+
+    await audit.save();
+    res.status(201).json({ audit, message: 'Audit created successfully' });
   } catch (error) {
-    res.status(500).json({ error: 'Failed to create audit', details: error.message });
+    res.status(500).json({ error: 'Failed to create audit', message: error.message });
   }
 };
 
 export const updateAudit = async (req, res) => {
   try {
-    const { id } = req.params;
-    const updates = req.body;
+    const { status, responses, location } = req.body;
 
-    const { data, error } = await supabase
-      .from('audits')
-      .update(updates)
-      .eq('audit_id', id)
-      .select()
-      .single();
+    const audit = await Audit.findByIdAndUpdate(
+      req.params.id,
+      { status, responses, location },
+      { new: true, runValidators: true }
+    ).populate('template_id');
 
-    if (error) {
-      return res.status(400).json({ error: error.message });
+    if (!audit) {
+      return res.status(404).json({ error: 'Audit not found' });
     }
 
-    res.json({ audit: data });
+    res.json({ audit, message: 'Audit updated successfully' });
   } catch (error) {
-    res.status(500).json({ error: 'Failed to update audit', details: error.message });
+    res.status(500).json({ error: 'Failed to update audit', message: error.message });
   }
 };
 
 export const submitAudit = async (req, res) => {
   try {
-    const { id } = req.params;
     const { responses } = req.body;
 
-    const { data: audit, error: auditError } = await supabase
-      .from('audits')
-      .select('*, templates(*)')
-      .eq('audit_id', id)
-      .maybeSingle();
+    const audit = await Audit.findById(req.params.id).populate('template_id');
 
-    if (auditError || !audit) {
+    if (!audit) {
       return res.status(404).json({ error: 'Audit not found' });
     }
 
-    const score = calculateScore(responses, audit.templates.sections, audit.templates.scoring_rules);
+    const template = audit.template_id;
+    const score = calculateScore(responses, template.sections, template.scoring_rules);
 
-    const { data, error } = await supabase
-      .from('audits')
-      .update({
-        responses,
-        score,
-        status: 'Completed',
-        submitted_at: new Date().toISOString()
-      })
-      .eq('audit_id', id)
-      .select()
-      .single();
+    audit.responses = responses;
+    audit.score = score;
+    audit.status = 'Completed';
+    audit.submitted_at = new Date();
 
-    if (error) {
-      return res.status(400).json({ error: error.message });
-    }
+    await audit.save();
 
-    res.json({ audit: data, message: 'Audit submitted successfully' });
+    res.json({ audit, message: 'Audit submitted successfully' });
   } catch (error) {
-    res.status(500).json({ error: 'Failed to submit audit', details: error.message });
+    res.status(500).json({ error: 'Failed to submit audit', message: error.message });
   }
 };
 
 const calculateScore = (responses, sections, scoringRules) => {
-  if (!scoringRules || !scoringRules.weights) {
+  if (!scoringRules || !scoringRules.enabled || !scoringRules.weights) {
     return null;
   }
 
   let totalScore = 0;
-  const sectionScores = {};
 
   sections.forEach(section => {
-    const sectionId = section.section_id || section.id;
+    const sectionId = section.section_id;
     const sectionResponses = responses[sectionId] || {};
     const questions = section.questions || [];
 
@@ -166,9 +132,8 @@ const calculateScore = (responses, sections, scoringRules) => {
       }
     });
 
-    const sectionWeight = scoringRules.weights[sectionId] || 0;
+    const sectionWeight = scoringRules.weights.get(sectionId) || 0;
     const sectionScore = maxPoints > 0 ? (sectionPoints / maxPoints) * sectionWeight : 0;
-    sectionScores[sectionId] = sectionScore;
     totalScore += sectionScore;
   });
 
@@ -177,19 +142,14 @@ const calculateScore = (responses, sections, scoringRules) => {
 
 export const deleteAudit = async (req, res) => {
   try {
-    const { id } = req.params;
+    const audit = await Audit.findByIdAndDelete(req.params.id);
 
-    const { error } = await supabase
-      .from('audits')
-      .delete()
-      .eq('audit_id', id);
-
-    if (error) {
-      return res.status(400).json({ error: error.message });
+    if (!audit) {
+      return res.status(404).json({ error: 'Audit not found' });
     }
 
     res.json({ message: 'Audit deleted successfully' });
   } catch (error) {
-    res.status(500).json({ error: 'Failed to delete audit', details: error.message });
+    res.status(500).json({ error: 'Failed to delete audit', message: error.message });
   }
 };

@@ -1,194 +1,266 @@
 # Retail Execution Audit System
 
-A comprehensive web application for FMCG companies to create, execute, and monitor retail audits with dynamic templates, offline support, and real-time reporting.
+A comprehensive full-stack solution for FMCG companies to create, execute, and monitor retail audits dynamically with real-time data synchronization and mobile field execution.
 
-## Features
+## 🚀 Quick Start
 
-### Template Management
-- **5-Step Wizard**: Create audit templates with intuitive step-by-step guidance
-- **Dynamic Sections**: Organize audits with customizable sections
-- **8 Question Types**: Text, Numeric, Single/Multiple Choice, Dropdown, Date/Time, File Upload, Barcode Scanner
-- **Conditional Logic**: Set up smart question flows based on responses
-- **Scoring System**: Weighted scoring with compliance thresholds
+```bash
+# 1. Start MongoDB
+brew services start mongodb-community  # macOS
+# or: sudo systemctl start mongod      # Linux
 
-### Audit Execution
-- **Offline Support**: Complete audits without internet connection
-- **Progress Saving**: Save and resume audits at any time
-- **Media Capture**: Upload photos and files as evidence
-- **Barcode Scanning**: Quick product validation
+# 2. Start Backend
+cd server && npm install && npm run dev
 
-### Monitoring & Reporting
-- **Real-time Dashboard**: Track completion rates and compliance scores
-- **Advanced Filtering**: Filter by region, category, personnel
-- **Exportable Reports**: Generate reports in PDF, Excel, CSV formats
-- **Notifications**: Alerts for overdue audits and compliance failures
+# 3. Start Web App
+npm install && npm run dev
 
-## Tech Stack
+# 4. Start Mobile App
+cd mobile && npm install && npm start
+```
+
+See [QUICKSTART.md](QUICKSTART.md) for detailed 5-minute setup guide.
+
+## 📋 Features
+
+### ✅ Fully Implemented
+
+- **5-Step Template Wizard** with sections and questions
+- **8 Question Types**: Text, Numeric, Single/Multiple Choice, Dropdown, Date/Time, File Upload, Barcode
+- **Weighted Scoring System** with compliance thresholds
+- **MongoDB Backend** with RESTful API
+- **React Native Mobile App** for field execution
+- **Real-time Template Sync** from web to mobile
+- **Dynamic Form Generation** on mobile
+- **Audit Submission** with score calculation
+- **Static Authentication** (login UI only)
+- **Professional UI/UX** across all platforms
+
+### 🔄 Architecture
+
+```
+Web App (React) ←→ Express API ←→ MongoDB
+                        ↓
+            Mobile App (React Native)
+```
+
+## 📱 Platforms
+
+- **Web Application**: Create and manage templates, view audit results (React + TypeScript)
+- **Mobile App**: Execute audits in the field (React Native + Expo)
+- **Backend API**: RESTful API with MongoDB storage (Node.js + Express)
+
+## 🛠️ Tech Stack
 
 ### Frontend
-- **React 18** with TypeScript
-- **Vite** for fast development and building
-- **Tailwind CSS** for styling
-- **React Router** for navigation
-- **Supabase** for authentication and database
-- **Lucide React** for icons
+- React 18 with TypeScript
+- Vite for fast development and building
+- Tailwind CSS for styling
+- React Router for navigation
+- Lucide React for icons
+
+### Mobile
+- React Native with Expo
+- TypeScript for type safety
+- React Navigation
+- Axios for API calls
 
 ### Backend
-- **Express.js** REST API
-- **Supabase** PostgreSQL database with JSONB support
-- **JWT** authentication
-- **CORS** enabled for frontend communication
+- Node.js with Express
+- MongoDB with Mongoose ODM
+- REST API design
+- CORS enabled
+
+## 📚 Documentation
+
+| Document | Purpose |
+|----------|---------|
+| [QUICKSTART.md](QUICKSTART.md) | Get started in 5 minutes |
+| [IMPLEMENTATION_GUIDE.md](IMPLEMENTATION_GUIDE.md) | Complete setup and usage guide |
+| [SYSTEM_SUMMARY.md](SYSTEM_SUMMARY.md) | Technical overview and architecture |
+| [API.md](API.md) | API endpoint documentation |
+| [mobile/README.md](mobile/README.md) | Mobile app specific guide |
+
+## 🎯 Usage Flow
+
+1. **Create Template** (Web)
+   - Open web app and login
+   - Navigate to Templates → Create Template
+   - Follow 5-step wizard to define sections, questions, and scoring
+   - Publish template
+
+2. **Execute Audit** (Mobile)
+   - Open mobile app
+   - Pull to refresh template list
+   - Select published template
+   - Fill out dynamic form
+   - Submit audit
+
+3. **View Results** (Web)
+   - Navigate to Audits page
+   - See submitted audits with scores
+   - Filter by status and category
+
+## 🗄️ Database Schema
+
+### Templates Collection
+Dynamic structure supporting any combination of sections and questions with flexible scoring rules.
+
+```javascript
+{
+  name, description, category,
+  sections: [{ title, questions: [...] }],
+  scoring_rules: { enabled, weights, threshold },
+  is_published, timestamps
+}
+```
+
+### Audits Collection
+Links to templates with flexible response storage and calculated scores.
+
+```javascript
+{
+  template_id, status, location,
+  responses: Map,
+  score, submitted_at, timestamps
+}
+```
+
+See [IMPLEMENTATION_GUIDE.md](IMPLEMENTATION_GUIDE.md) for detailed schemas.
+
+## 📊 Question Types
+
+1. **Text Input** - Free-form text responses
+2. **Numeric Input** - Numbers with min/max validation
+3. **Single Choice** - Radio button selection
+4. **Multiple Choice** - Checkbox selection
+5. **Dropdown** - Select from list
+6. **Date/Time** - Date picker
+7. **File Upload** - Photo/document upload (UI ready)
+8. **Barcode Scanner** - Product scanning (text input)
+
+## 🔐 Authentication
+
+Current implementation uses **static authentication** (any credentials work) for development purposes.
+
+**For Production**: Implement JWT authentication, password hashing with bcrypt, and role-based access control.
+
+## 🚢 Deployment
+
+### Backend
+- Deploy to Railway, Render, or Heroku
+- Use MongoDB Atlas for cloud database
+- Set environment variables
+
+### Web App
+```bash
+npm run build
+# Deploy dist/ to Netlify, Vercel, or any static hosting
+```
+
+### Mobile App
+```bash
+cd mobile
+eas build --platform all
+```
+
+See [IMPLEMENTATION_GUIDE.md](IMPLEMENTATION_GUIDE.md) for detailed deployment instructions.
+
+## 📈 Scoring System
+
+- Assign weights to sections (must total 100%)
+- Questions scored based on completion
+- **Formula**: `Final Score = Σ(section_score × section_weight)`
+- Compliance determined by threshold (e.g., 80%)
+
+**Example:**
+- Section 1 (60%): 8/10 answered → 48 points
+- Section 2 (40%): 10/10 answered → 40 points
+- Total: 88% → ✅ Compliant (threshold: 80%)
+
+## 📱 Mobile Configuration
+
+Update API URL in mobile screens for your environment:
+- **Android Emulator**: `http://10.0.2.2:3001/api`
+- **iOS Simulator**: `http://localhost:3001/api`
+- **Physical Device**: `http://your-computer-ip:3001/api`
+
+## 🧪 Testing
+
+```bash
+# Build verification
+npm run build
+
+# TypeScript check
+npm run typecheck
+
+# Backend test
+cd server && npm run dev
+```
 
 ## Project Structure
 
 ```
 project/
-├── src/                    # Frontend source code
-│   ├── components/         # Reusable React components
-│   ├── pages/             # Page components
-│   │   ├── LoginPage.tsx
-│   │   ├── RegisterPage.tsx
-│   │   ├── DashboardPage.tsx
-│   │   ├── TemplatesPage.tsx
-│   │   ├── CreateTemplatePage.tsx
-│   │   └── AuditsPage.tsx
-│   ├── contexts/          # React contexts
-│   │   └── AuthContext.tsx
-│   ├── lib/               # Library configurations
-│   │   └── supabase.ts
-│   └── App.tsx            # Main app component
-│
-├── server/                # Backend API
+├── src/                          # Web application
+│   ├── components/
+│   │   ├── Layout.tsx
+│   │   └── TemplateWizard/      # 5-step wizard components
+│   ├── pages/                    # All page components
+│   ├── contexts/                 # Auth context (static)
+│   └── lib/
+├── server/                       # Backend API
 │   └── src/
-│       ├── routes/        # API routes
-│       │   ├── auth.js
-│       │   ├── templates.js
-│       │   └── audits.js
-│       ├── controllers/   # Request handlers
-│       │   ├── authController.js
-│       │   ├── templateController.js
-│       │   └── auditController.js
-│       ├── middleware/    # Express middleware
-│       │   └── auth.js
-│       ├── config/        # Configuration files
-│       │   └── supabase.js
-│       └── index.js       # Express server entry
-│
-└── README.md             # This file
+│       ├── models/               # MongoDB models
+│       ├── controllers/          # Request handlers
+│       ├── routes/               # API routes
+│       └── config/               # Database config
+└── mobile/                       # React Native app
+    ├── App.tsx
+    └── src/screens/              # Mobile screens
 ```
 
-## Database Schema
+## 🔮 Future Enhancements
 
-### Tables
-- **users**: User accounts with roles (Admin, Auditor, Supervisor)
-- **templates**: Audit templates with JSONB configuration
-- **sections**: Reusable template sections
-- **audits**: Audit instances with responses and scores
-- **reports**: Generated audit reports
+- Real authentication with JWT
+- Offline mode for mobile app
+- File upload with camera integration
+- Barcode scanner with device camera
+- Reporting dashboard with analytics
+- Data export (PDF, Excel, CSV)
+- User management and roles
+- Conditional logic execution
+- Real-time notifications
+- GPS location capture
 
-### Security
-- Row Level Security (RLS) enabled on all tables
-- Users can only access their own data
-- Authenticated access required for all operations
+## 🆘 Troubleshooting
 
-## Getting Started
-
-### Prerequisites
-- Node.js 18+
-- npm or yarn
-- Supabase account
-
-### Environment Variables
-
-Create a `.env` file in the root directory:
-
-```env
-VITE_SUPABASE_URL=your_supabase_url
-VITE_SUPABASE_ANON_KEY=your_supabase_anon_key
-JWT_SECRET=your_jwt_secret
-PORT=3001
-CLIENT_URL=http://localhost:5173
-```
-
-### Installation
-
-1. **Install frontend dependencies:**
+**MongoDB not running?**
 ```bash
-npm install
+brew services start mongodb-community  # macOS
+sudo systemctl start mongod           # Linux
 ```
 
-2. **Install backend dependencies:**
+**Port 3001 in use?**
 ```bash
-cd server
-npm install
-cd ..
+lsof -ti:3001 | xargs kill -9  # macOS/Linux
 ```
 
-### Running the Application
+**Mobile can't connect?**
+- Verify backend is running
+- Update API_URL to your computer's IP
+- Check firewall settings
 
-1. **Start the backend server:**
-```bash
-cd server
-npm run dev
-```
-Server will run on http://localhost:3001
+See [IMPLEMENTATION_GUIDE.md](IMPLEMENTATION_GUIDE.md) for more troubleshooting.
 
-2. **Start the frontend (in a new terminal):**
-```bash
-npm run dev
-```
-Frontend will run on http://localhost:5173
-
-3. **Access the application:**
-Open your browser and navigate to http://localhost:5173
-
-### Building for Production
-
-```bash
-npm run build
-```
-
-Build output will be in the `dist/` directory.
-
-## API Endpoints
-
-### Authentication
-- `POST /api/auth/register` - Register new user
-- `POST /api/auth/login` - Login user
-- `POST /api/auth/logout` - Logout user
-- `GET /api/auth/me` - Get current user
-
-### Templates
-- `GET /api/templates` - Get all templates
-- `GET /api/templates/:id` - Get template by ID
-- `POST /api/templates` - Create new template
-- `PUT /api/templates/:id` - Update template
-- `DELETE /api/templates/:id` - Delete template
-- `PATCH /api/templates/:id/publish` - Publish template
-
-### Audits
-- `GET /api/audits` - Get all audits
-- `GET /api/audits/:id` - Get audit by ID
-- `POST /api/audits` - Create new audit
-- `PUT /api/audits/:id` - Update audit
-- `POST /api/audits/:id/submit` - Submit completed audit
-- `DELETE /api/audits/:id` - Delete audit
-
-## User Roles
-
-- **Admin**: Full access to all features, can manage users and templates
-- **Supervisor**: Can create templates and view team audits
-- **Auditor**: Can execute assigned audits and view own data
-
-## Future Enhancements
-
-- React Native mobile app
-- Advanced analytics and trend analysis
-- Custom report builder
-- Bulk audit assignment
-- Integration with third-party systems
-- Real-time collaboration features
-
-## License
+## 📄 License
 
 Proprietary - All rights reserved
+
+---
+
+**System Status**: ✅ Fully Functional
+**Documentation**: 📚 Complete
+**Production Ready**: 🔧 Needs security enhancements
+
+Built with ❤️ for FMCG field operations
