@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Plus, Edit2, Trash2, GripVertical } from 'lucide-react';
+import { Plus, CreditCard as Edit2, Trash2, GripVertical } from 'lucide-react';
 
 interface Step2Props {
   data: any;
