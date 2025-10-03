@@ -5,7 +5,7 @@ dotenv.config({ path: '../.env' });
 
 const connectDB = async () => {
   try {
-    const conn = await mongoose.connect(process.env.MONGODB_URI || 'mongodb://localhost:27017/retail-audit', {
+    const conn = await mongoose.connect(process.env.MONGODB_URI || 'mongodb+srv://zafran:zafran786@clusterform.mtfzjnj.mongodb.net/retail-execution?retryWrites=true&w=majority', {
       useNewUrlParser: true,
       useUnifiedTopology: true,
     });
