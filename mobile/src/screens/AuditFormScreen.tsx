@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import {
   View,
   Text,
@@ -8,6 +8,7 @@ import {
   StyleSheet,
   Alert,
   ActivityIndicator,
+  Image,
 } from 'react-native';
 import axios from 'axios';
 
@@ -22,6 +23,9 @@ const QUESTION_COMPONENTS: any = {
   date_time: DateTimeComponent,
   file_upload: FileUploadComponent,
   barcode_scanner: BarcodeComponent,
+  yes_no: YesNoComponent,
+  rating_scale: RatingScaleComponent,
+  image_upload: ImageUploadComponent,
 };
 
 function TextInputComponent({ question, value, onChange }: any) {
@@ -45,6 +49,68 @@ function NumericInputComponent({ question, value, onChange }: any) {
       placeholder="Enter number"
       keyboardType="numeric"
     />
+  );
+}
+
+function YesNoComponent({ question, value, onChange }: any) {
+  return (
+    <View style={styles.yesNoContainer}>
+      <TouchableOpacity
+        style={[styles.yesNoButton, value === 'Yes' && styles.yesButtonSelected]}
+        onPress={() => onChange('Yes')}
+      >
+        <Text
+          style={[
+            styles.yesNoText,
+            value === 'Yes' && styles.yesNoTextSelected,
+          ]}
+        >
+          Yes
+        </Text>
+      </TouchableOpacity>
+      <TouchableOpacity
+        style={[styles.yesNoButton, value === 'No' && styles.noButtonSelected]}
+        onPress={() => onChange('No')}
+      >
+        <Text
+          style={[
+            styles.yesNoText,
+            value === 'No' && styles.yesNoTextSelected,
+          ]}
+        >
+          No
+        </Text>
+      </TouchableOpacity>
+    </View>
+  );
+}
+
+function RatingScaleComponent({ question, value, onChange }: any) {
+  const max = question.validation?.max || 5;
+  const ratings = Array.from({ length: max }, (_, i) => i + 1);
+
+  return (
+    <View style={styles.ratingContainer}>
+      {ratings.map((rating) => (
+        <TouchableOpacity
+          key={rating}
+          style={[
+            styles.ratingButton,
+            value === rating.toString() && styles.ratingButtonSelected,
+          ]}
+          onPress={() => onChange(rating.toString())}
+        >
+          <Text
+            style={[
+              styles.ratingText,
+              value === rating.toString() && styles.ratingTextSelected,
+            ]}
+          >
+            {rating}
+          </Text>
+        </TouchableOpacity>
+      ))}
+    </View>
   );
 }
 
@@ -134,6 +200,16 @@ function FileUploadComponent({ question, value, onChange }: any) {
   );
 }
 
+function ImageUploadComponent({ question, value, onChange }: any) {
+  return (
+    <TouchableOpacity style={styles.uploadButton}>
+      <Text style={styles.uploadButtonText}>
+        {value ? '📷 Photo Captured' : '📷 Take Photo (Coming Soon)'}
+      </Text>
+    </TouchableOpacity>
+  );
+}
+
 function BarcodeComponent({ question, value, onChange }: any) {
   return (
     <TextInput
@@ -150,6 +226,67 @@ export default function AuditFormScreen({ route, navigation }: any) {
   const [responses, setResponses] = useState<any>({});
   const [loading, setLoading] = useState(false);
 
+  const evaluateCondition = (rule: any, currentResponses: any) => {
+    const sections = template.sections || [];
+    let questionValue = null;
+
+    for (const section of sections) {
+      const value = currentResponses[section.section_id]?.[rule.source_question_id];
+      if (value !== undefined && value !== null) {
+        questionValue = value;
+        break;
+      }
+    }
+
+    if (questionValue === null || questionValue === undefined || questionValue === '') {
+      return false;
+    }
+
+    switch (rule.condition_type) {
+      case 'equals':
+        return String(questionValue) === String(rule.condition_value);
+      case 'not_equals':
+        return String(questionValue) !== String(rule.condition_value);
+      case 'contains':
+        return String(questionValue).includes(String(rule.condition_value));
+      case 'greater_than':
+        return Number(questionValue) > Number(rule.condition_value);
+      case 'less_than':
+        return Number(questionValue) < Number(rule.condition_value);
+      default:
+        return false;
+    }
+  };
+
+  const visibleQuestions = useMemo(() => {
+    const visible = new Set<string>();
+    const conditionalLogic = template.conditional_logic || [];
+
+    const allQuestions = template.sections.flatMap((section: any) =>
+      (section.questions || []).map((q: any) => q.question_id)
+    );
+
+    allQuestions.forEach((qId: string) => visible.add(qId));
+
+    conditionalLogic.forEach((rule: any) => {
+      const conditionMet = evaluateCondition(rule, responses);
+
+      rule.target_question_ids?.forEach((targetId: string) => {
+        if (rule.action === 'show' && conditionMet) {
+          visible.add(targetId);
+        } else if (rule.action === 'hide' && conditionMet) {
+          visible.delete(targetId);
+        } else if (rule.action === 'show' && !conditionMet) {
+          visible.delete(targetId);
+        } else if (rule.action === 'hide' && !conditionMet) {
+          visible.add(targetId);
+        }
+      });
+    });
+
+    return visible;
+  }, [responses, template]);
+
   const handleResponseChange = (sectionId: string, questionId: string, value: any) => {
     setResponses((prev: any) => ({
       ...prev,
@@ -163,6 +300,10 @@ export default function AuditFormScreen({ route, navigation }: any) {
   const validateForm = () => {
     for (const section of template.sections) {
       for (const question of section.questions || []) {
+        if (!visibleQuestions.has(question.question_id)) {
+          continue;
+        }
+
         if (question.mandatory) {
           const value = responses[section.section_id]?.[question.question_id];
           if (!value || (Array.isArray(value) && value.length === 0)) {
@@ -209,6 +350,11 @@ export default function AuditFormScreen({ route, navigation }: any) {
         {template.description && (
           <Text style={styles.description}>{template.description}</Text>
         )}
+        {template.conditional_logic && template.conditional_logic.length > 0 && (
+          <View style={styles.badge}>
+            <Text style={styles.badgeText}>⚡ Smart Questions Enabled</Text>
+          </View>
+        )}
       </View>
 
       {template.sections.map((section: any) => (
@@ -219,6 +365,12 @@ export default function AuditFormScreen({ route, navigation }: any) {
           )}
 
           {section.questions?.map((question: any) => {
+            const isVisible = visibleQuestions.has(question.question_id);
+
+            if (!isVisible) {
+              return null;
+            }
+
             const QuestionComponent = QUESTION_COMPONENTS[question.type] || TextInputComponent;
 
             return (
@@ -278,6 +430,20 @@ const styles = StyleSheet.create({
   description: {
     fontSize: 14,
     color: '#64748b',
+    marginBottom: 8,
+  },
+  badge: {
+    backgroundColor: '#fef3c7',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 16,
+    alignSelf: 'flex-start',
+    marginTop: 8,
+  },
+  badgeText: {
+    fontSize: 12,
+    color: '#92400e',
+    fontWeight: '600',
   },
   section: {
     backgroundColor: '#ffffff',
@@ -315,6 +481,62 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: '#0f172a',
     backgroundColor: '#ffffff',
+  },
+  yesNoContainer: {
+    flexDirection: 'row',
+    gap: 12,
+  },
+  yesNoButton: {
+    flex: 1,
+    borderWidth: 2,
+    borderColor: '#cbd5e1',
+    borderRadius: 8,
+    padding: 16,
+    alignItems: 'center',
+    backgroundColor: '#ffffff',
+  },
+  yesButtonSelected: {
+    backgroundColor: '#10b981',
+    borderColor: '#10b981',
+  },
+  noButtonSelected: {
+    backgroundColor: '#ef4444',
+    borderColor: '#ef4444',
+  },
+  yesNoText: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: '#0f172a',
+  },
+  yesNoTextSelected: {
+    color: '#ffffff',
+  },
+  ratingContainer: {
+    flexDirection: 'row',
+    gap: 8,
+    justifyContent: 'space-between',
+  },
+  ratingButton: {
+    flex: 1,
+    aspectRatio: 1,
+    borderWidth: 2,
+    borderColor: '#cbd5e1',
+    borderRadius: 8,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: '#ffffff',
+  },
+  ratingButtonSelected: {
+    backgroundColor: '#f59e0b',
+    borderColor: '#f59e0b',
+  },
+  ratingText: {
+    fontSize: 20,
+    fontWeight: 'bold',
+    color: '#0f172a',
+  },
+  ratingTextSelected: {
+    color: '#ffffff',
   },
   optionsContainer: {
     gap: 8,

@@ -7,12 +7,15 @@ interface Step3Props {
 }
 
 const QUESTION_TYPES = [
+  { value: 'yes_no', label: 'Yes/No' },
   { value: 'text_input', label: 'Text Input' },
   { value: 'numeric_input', label: 'Numeric Input' },
+  { value: 'rating_scale', label: 'Rating Scale (1-5)' },
   { value: 'single_choice', label: 'Single Choice' },
   { value: 'multiple_choice', label: 'Multiple Choice' },
   { value: 'dropdown', label: 'Dropdown' },
   { value: 'date_time', label: 'Date/Time' },
+  { value: 'image_upload', label: 'Image Upload' },
   { value: 'file_upload', label: 'File Upload' },
   { value: 'barcode_scanner', label: 'Barcode Scanner' }
 ];
@@ -70,7 +73,7 @@ export default function Step3Questions({ data, onChange }: Step3Props) {
       type: questionData.type,
       options: ['single_choice', 'multiple_choice', 'dropdown'].includes(questionData.type) ? questionData.options.filter((o: string) => o.trim()) : undefined,
       mandatory: questionData.mandatory,
-      validation: questionData.type === 'numeric_input' ? questionData.validation : undefined
+      validation: ['numeric_input', 'rating_scale'].includes(questionData.type) ? questionData.validation : undefined
     };
 
     const updatedSections = [...sections];
@@ -292,6 +295,27 @@ export default function Step3Questions({ data, onChange }: Step3Props) {
                       placeholder="Max"
                     />
                   </div>
+                </div>
+              )}
+
+              {questionData.type === 'rating_scale' && (
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 mb-2">
+                    Maximum Rating
+                  </label>
+                  <input
+                    type="number"
+                    value={questionData.validation.max || 5}
+                    onChange={(e) => setQuestionData({
+                      ...questionData,
+                      validation: { ...questionData.validation, min: 1, max: parseFloat(e.target.value) || 5 }
+                    })}
+                    className="w-full px-4 py-2 border border-slate-300 rounded-lg"
+                    placeholder="5"
+                    min="1"
+                    max="10"
+                  />
+                  <p className="text-xs text-slate-500 mt-1">Default is 1-5 scale</p>
                 </div>
               )}
 

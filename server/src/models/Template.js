@@ -6,7 +6,7 @@ const questionSchema = new mongoose.Schema({
   type: {
     type: String,
     required: true,
-    enum: ['text_input', 'numeric_input', 'single_choice', 'multiple_choice', 'dropdown', 'date_time', 'file_upload', 'barcode_scanner']
+    enum: ['text_input', 'numeric_input', 'single_choice', 'multiple_choice', 'dropdown', 'date_time', 'file_upload', 'barcode_scanner', 'yes_no', 'rating_scale', 'image_upload']
   },
   options: [String],
   mandatory: { type: Boolean, default: false },
@@ -47,11 +47,12 @@ const templateSchema = new mongoose.Schema({
     critical_questions: [String]
   },
   conditional_logic: [{
-    question_id: String,
-    condition: String,
-    operator: { type: String, enum: ['AND', 'OR', 'NOT'] },
-    action: String,
-    target: String
+    rule_id: String,
+    source_question_id: String,
+    condition_type: { type: String, enum: ['equals', 'not_equals', 'contains', 'greater_than', 'less_than'] },
+    condition_value: mongoose.Schema.Types.Mixed,
+    action: { type: String, enum: ['show', 'hide', 'require', 'skip_to'] },
+    target_question_ids: [String]
   }],
   is_published: {
     type: Boolean,

@@ -5,6 +5,7 @@ import connectDB from './config/database.js';
 import authRoutes from './routes/auth.js';
 import templateRoutes from './routes/templates.js';
 import auditRoutes from './routes/audits.js';
+import sampleRoutes from './routes/samples.js';
 
 dotenv.config({ path: '../.env' });
 
@@ -28,6 +29,7 @@ app.get('/api/health', (req, res) => {
 app.use('/api/auth', authRoutes);
 app.use('/api/templates', templateRoutes);
 app.use('/api/audits', auditRoutes);
+app.use('/api/samples', sampleRoutes);
 
 app.use((err, req, res, next) => {
   console.error(err.stack);

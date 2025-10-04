@@ -6,6 +6,7 @@ import DashboardPage from './pages/DashboardPage';
 import TemplatesPage from './pages/TemplatesPage';
 import CreateTemplatePage from './pages/CreateTemplatePage';
 import AuditsPage from './pages/AuditsPage';
+import AuditDetailPage from './pages/AuditDetailPage';
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const { user, loading } = useAuth();
@@ -62,6 +63,14 @@ function AppRoutes() {
         element={
           <ProtectedRoute>
             <AuditsPage />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/audits/:id"
+        element={
+          <ProtectedRoute>
+            <AuditDetailPage />
           </ProtectedRoute>
         }
       />
